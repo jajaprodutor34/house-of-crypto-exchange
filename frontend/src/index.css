@@ -1,3 +1,9 @@
 body {
-  background: red !important;
+  margin: 0;
+  padding: 0;
+  background-image: url("/images/bg-exchange.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
 }
