@@ -42,5 +42,68 @@ body {
 
 .swap-box button:hover {
   transform: scale(1.03);
+.market-title {
+  color: #00ff99;
+  margin-top: 30px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.token-market-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.token-card {
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(0,255,153,0.25);
+  border-radius: 20px;
+  padding: 20px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  backdrop-filter: blur(10px);
+
+  transition: 0.3s;
+}
+
+.token-card:hover {
+  transform: scale(1.01);
+  border-color: #00ff99;
+}
+
+.token-info h3 {
+  color: #00ff99;
+  margin-bottom: 10px;
+}
+
+.token-info p {
+  color: white;
+  margin: 5px 0;
+}
+
+.trade-button {
+  background: #00ff99;
+  color: black;
+
+  border: none;
+
+  padding: 14px 22px;
+
+  border-radius: 14px;
+
+  font-weight: bold;
+
+  cursor: pointer;
+
+  transition: 0.3s;
+}
+
+.trade-button:hover {
+  transform: scale(1.05);
+}
 }
 }

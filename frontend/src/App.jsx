@@ -630,16 +630,70 @@ export default function App() {
             title="TradingView Chart"
           ></iframe>
 
-          <ul>
-            {filteredPools.map((p) => (
-              <li key={p.address}>
-                <strong>
-                  {p.pairs.join(", ")}
-                </strong>{" "}
-                — {poolVisibilityText(p)}
-              </li>
-            ))}
-          </ul>
+          <div className="token-market-list">
+
+  <h3 className="market-title">
+    🔥 Trending Tokens
+  </h3>
+
+  {filteredPools.map((p) => (
+    <div
+      className="token-card"
+      key={p.address}
+    >
+      <div className="token-info">
+
+        <h3>
+          {p.pairs.join(", ")}
+        </h3>
+
+        <p>
+          💧 Liquidity:
+          ${Number(
+            p.liquidityUSD
+          ).toLocaleString()}
+        </p>
+
+        <p>
+          📈 Volume:
+          $
+          {(
+            p.liquidityUSD * 0.35
+          ).toFixed(2)}
+        </p>
+
+        <p>
+          🔥 {poolVisibilityText(p)}
+        </p>
+
+      </div>
+
+      <button
+        className="trade-button"
+        onClick={() => {
+
+          const pair =
+            p.pairs[0]?.split("/") || [];
+
+          if (pair.length >= 2) {
+
+            setSwapFrom(pair[0]);
+
+            setSwapTo(pair[1]);
+          }
+
+          setPage(1);
+
+          alert(
+            `Trading ${p.pairs[0]}`
+          );
+        }}
+      >
+        🚀 Trade
+      </button>
+    </div>
+  ))}
+</div>
 
           <div className="actions">
             <button
