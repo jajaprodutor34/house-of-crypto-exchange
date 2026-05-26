@@ -1,0 +1,26 @@
+const { ethers } = require("hardhat");
+
+async function main() {
+    // Pega duas contas diferentes do Hardhat Node
+    const [deployer, user1] = await ethers.getSigners();
+
+    // Endereço da Factory que você já deployou
+    const factoryAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+    const FactoryABI = require("../artifacts/contracts/AMMFactory.sol/AMMFactory.json");
+
+    const factory = new ethers.Contract(factoryAddress, FactoryABI.abi, deployer);
+
+    // Cria um par de teste com dois endereços diferentes
+    const tx = await factory.createPair(deployer.address, user1.address);
+    await tx.wait();
+
+    console.log("✅ Par de teste criado com sucesso!");
+}
+
+main()
+    .then(() => process.exit(0))
+    .catch((error) => {
+        console.error(error);
+        process.exit(1);
+    });
+

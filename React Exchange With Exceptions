@@ -1,0 +1,315 @@
+/*
+React single-file component (default export) for Exchange frontend prototype.
+- Tailwind CSS classes used.
+- Uses ethers v5 to read liquidity from QuickSwap (UniswapV2 style) pairs on Polygon.
+
+HOW TO USE:
+1) Replace the placeholders DEFAULT_EXCHANGE_TOKEN and MEGALODONTE_TOKEN with real addresses.
+2) Install dependencies: ethers@5.x, react, react-dom, tailwindcss (see chat instructions for full setup).
+3) Put this file in src/App.jsx (or similar) of a Vite/CRA React project.
+
+NOTES:
+- This is a *prototype* for listing tokens that have liquidity >= MIN_LIQUIDITY_USD, plus always-show exceptions.
+- For production you should index pairs on the backend (The Graph or a Node indexer) instead of scanning many tokens from the frontend.
+- Replace FACTORY_ADDRESS / ROUTER_ADDRESS if you target a different AMM or version.
+*/
+
+import React, { useEffect, useState } from 'react';
+import { ethers } from 'ethers';
+
+// --------- CONFIG (replace these) ---------
+// QuickSwap V2 factory & router addresses on Polygon (stable common defaults)
+export const FACTORY_ADDRESS = '0x5757371414417b8C6CAad45bAeF941aBc7d3Ab32'; // QuickSwap V2 factory
+export const ROUTER_ADDRESS = '0xa5E0829CaCEd8fFDD4De3c43696c57f7D7A678ff'; // QuickSwap V2 router
+export const USDC_ADDRESS = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'; // USDC on Polygon
+
+// === IMPORTANT: put real token addresses here ===
+export const DEFAULT_EXCHANGE_TOKEN = '0x0000000000000000000000000000000000000000'; // << REPLACE with your exchange default token address >>
+export const MEGALODONTE_TOKEN = '0x0000000000000000000000000000000000000000'; // << REPLACE with your Megalodonte token address >>
+
+// Minimum liquidity (USD) to show token in listing by default. Exceptions will always show.
+export const MIN_LIQUIDITY_USD = 200;
+
+// RPC (use Polygon public RPC by default, but for local testing use Hardhat local URL http://127.0.0.1:8545)
+export const DEFAULT_RPC = process.env.REACT_APP_RPC_URL || 'https://polygon-rpc.com';
+// -------------------------------------------
+
+// Minimal ABIs used in the component
+const ERC20_ABI = [
+  'function decimals() view returns (uint8)',
+  'function symbol() view returns (string)',
+  'function name() view returns (string)'
+];
+const PAIR_ABI = [
+  'function getReserves() view returns (uint112,uint112,uint32)',
+  'function token0() view returns (address)',
+  'function token1() view returns (address)'
+];
+const FACTORY_ABI = ['function getPair(address,address) view returns (address)'];
+const ROUTER_ABI = [
+  'function addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint256) returns (uint256,uint256,uint256)',
+  'function addLiquidityETH(address,uint256,uint256,uint256,address,uint256) payable returns (uint256,uint256,uint256)'
+];
+
+function toHuman(value, decimals) {
+  try {
+    return Number(ethers.utils.formatUnits(value, decimals));
+  } catch (e) {
+    return 0;
+  }
+}
+
+async function getLiquidityUSD(providerOrSigner, tokenAddress, rpcProvider = null) {
+  // providerOrSigner can be a provider or signer. We'll use a provider for read-only calls.
+  const provider = rpcProvider || (providerOrSigner.provider ? providerOrSigner.provider : providerOrSigner);
+  const factory = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, provider);
+
+  // Try USDC pair first
+  let pairAddr = await factory.getPair(tokenAddress, USDC_ADDRESS);
+
+  // If no direct USDC pair, try pair with WMATIC (then derive price via WMATIC/USDC)
+  const WMATIC_ADDRESS = '0x0000000000000000000000000000000000000000'; // placeholder for WMATIC address if you want to use MATIC fallback
+
+  if (pairAddr === ethers.constants.AddressZero) {
+    // try token/MATIC (common fallback). We'll attempt with WMATIC typical address 0x0... but user can adjust.
+    // Common WMATIC on Polygon: 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270 (but network specifics may vary)
+    const COMMON_WMATIC = '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270';
+    pairAddr = await factory.getPair(tokenAddress, COMMON_WMATIC);
+    if (pairAddr === ethers.constants.AddressZero) return 0; // no pair found
+
+    // If pair with WMATIC exists, we need WMATIC/USDC price. We'll try to get WMATIC/USDC pair
+    const wmaticUsdcPair = await factory.getPair(COMMON_WMATIC, USDC_ADDRESS);
+    if (wmaticUsdcPair === ethers.constants.AddressZero) return 0; // fallback fail
+
+    // get reserves for token/WMATIC and for WMATIC/USDC
+    const pair1 = new ethers.Contract(pairAddr, PAIR_ABI, provider);
+    const [r0a, r1a] = await pair1.getReserves();
+    const token0 = await pair1.token0();
+    const token1 = await pair1.token1();
+
+    // token/WMATIC reserves
+    let reserveToken, reserveWmatic;
+    if (token0.toLowerCase() === COMMON_WMATIC.toLowerCase()) {
+      reserveWmatic = r0a;
+      reserveToken = r1a;
+    } else {
+      reserveWmatic = r1a;
+      reserveToken = r0a;
+    }
+
+    // WMATIC/USDC
+    const pair2 = new ethers.Contract(wmaticUsdcPair, PAIR_ABI, provider);
+    const [r0b, r1b] = await pair2.getReserves();
+    const t0b = await pair2.token0();
+    const t1b = await pair2.token1();
+    let reserveWmaticB, reserveUSDC;
+    if (t0b.toLowerCase() === COMMON_WMATIC.toLowerCase()) {
+      reserveWmaticB = r0b;
+      reserveUSDC = r1b;
+    } else {
+      reserveWmaticB = r1b;
+      reserveUSDC = r0b;
+    }
+
+    // decimals
+    const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+    const tokenDecimals = await tokenContract.decimals();
+    const usdcDecimals = 6;
+
+    const reserveWmaticFloat = Number(ethers.utils.formatUnits(reserveWmaticB, 18));
+    const reserveUSDCFloat = Number(ethers.utils.formatUnits(reserveUSDC, usdcDecimals));
+    if (reserveWmaticFloat === 0) return 0;
+    const wmaticPriceUSD = reserveUSDCFloat / reserveWmaticFloat;
+
+    const reserveTokenFloat = Number(ethers.utils.formatUnits(reserveToken, tokenDecimals));
+    const reserveWmaticFloatTokenPair = Number(ethers.utils.formatUnits(reserveWmatic, 18));
+    const liquidityUSD = reserveUSDCFloat + (reserveTokenFloat * (wmaticPriceUSD * (reserveWmaticFloatTokenPair / reserveWmaticFloat)));
+
+    return liquidityUSD;
+  }
+
+  // If direct pair with USDC found
+  const pair = new ethers.Contract(pairAddr, PAIR_ABI, provider);
+  const [reserve0, reserve1] = await pair.getReserves();
+  const token0 = await pair.token0();
+  const token1 = await pair.token1();
+
+  let reserveToken, reserveUSDC;
+  if (token0.toLowerCase() === USDC_ADDRESS.toLowerCase()) {
+    reserveUSDC = reserve0;
+    reserveToken = reserve1;
+  } else {
+    reserveUSDC = reserve1;
+    reserveToken = reserve0;
+  }
+
+  // get decimals
+  // try to read token decimals; if fails, assume 18
+  let tokenDecimals = 18;
+  try {
+    const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+    tokenDecimals = await tokenContract.decimals();
+  } catch (e) {
+    console.warn('Erro ao ler decimals, assumindo 18', e);
+  }
+
+  const reserveUSDCFloat = Number(ethers.utils.formatUnits(reserveUSDC, 6));
+  const reserveTokenFloat = Number(ethers.utils.formatUnits(reserveToken, tokenDecimals));
+
+  // price token in USD via USDC reserve
+  const priceTokenUSD = reserveUSDCFloat / (reserveTokenFloat || 1);
+  const liquidityUSD = reserveUSDCFloat + (reserveTokenFloat * priceTokenUSD);
+  return liquidityUSD;
+}
+
+export default function ExchangeApp() {
+  const [rpc, setRpc] = useState(DEFAULT_RPC);
+  const [provider, setProvider] = useState(new ethers.providers.JsonRpcProvider(DEFAULT_RPC));
+  const [account, setAccount] = useState(null);
+  const [tokensToCheck, setTokensToCheck] = useState([MEGALODONTE_TOKEN, DEFAULT_EXCHANGE_TOKEN]);
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [minLiquidity, setMinLiquidity] = useState(MIN_LIQUIDITY_USD);
+
+  useEffect(() => {
+    setProvider(new ethers.providers.JsonRpcProvider(rpc));
+  }, [rpc]);
+
+  async function connectWallet() {
+    if (!window.ethereum) {
+      alert('MetaMask não encontrada. Use um browser com MetaMask.');
+      return;
+    }
+    try {
+      await window.ethereum.request({ method: 'eth_requestAccounts' });
+      const p = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = p.getSigner();
+      setAccount(await signer.getAddress());
+      setProvider(p);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function scanTokens() {
+    setLoading(true);
+    const addresses = tokensToCheck.map(a => a.trim()).filter(a => a && a !== ethers.constants.AddressZero);
+    const out = [];
+    for (const addr of addresses) {
+      try {
+        const liq = await getLiquidityUSD(provider, addr, provider);
+        let symbol = '';
+        try {
+          const tokenContract = new ethers.Contract(addr, ERC20_ABI, provider);
+          symbol = await tokenContract.symbol();
+        } catch (e) {
+          symbol = addr.slice(0, 6) + '...';
+        }
+        out.push({ address: addr, symbol, liquidityUSD: liq });
+      } catch (e) {
+        console.error('erro ao checar token', addr, e);
+        out.push({ address: addr, symbol: addr.slice(0, 6), liquidityUSD: 0, error: true });
+      }
+    }
+
+    // Filter & apply exceptions: show if liquidity >= min OR address is one of the exceptions
+    const alwaysShow = [DEFAULT_EXCHANGE_TOKEN.toLowerCase(), MEGALODONTE_TOKEN.toLowerCase()].filter(a => a && a !== ethers.constants.AddressZero);
+
+    const filtered = out.filter(t => (t.liquidityUSD >= minLiquidity) || alwaysShow.includes(t.address.toLowerCase()));
+
+    // Sort by liquidity desc but keep exceptions on top if they are exceptions and low
+    filtered.sort((a, b) => b.liquidityUSD - a.liquidityUSD);
+
+    setResults(filtered);
+    setLoading(false);
+  }
+
+  function addTokenInput() {
+    setTokensToCheck(prev => [...prev, '']);
+  }
+
+  function updateTokenAt(index, value) {
+    setTokensToCheck(prev => prev.map((v, i) => (i === index ? value : v)));
+  }
+
+  function removeTokenAt(index) {
+    setTokensToCheck(prev => prev.filter((_, i) => i !== index));
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow p-6">
+        <header className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">House of Crypto - Exchange UI (Protótipo)</h1>
+          <div>
+            {account ? (
+              <div className="text-sm">Conectado: {account}</div>
+            ) : (
+              <button className="px-4 py-2 bg-blue-600 text-white rounded" onClick={connectWallet}>Conectar Carteira</button>
+            )}
+          </div>
+        </header>
+
+        <section className="mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="col-span-2">
+              <label className="block text-sm font-medium">RPC (para leitura) — use http://127.0.0.1:8545 para Hardhat local</label>
+              <input className="mt-1 block w-full border rounded p-2" value={rpc} onChange={e => setRpc(e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium">Min Liquidity (USD)</label>
+              <input type="number" className="mt-1 block w-full border rounded p-2" value={minLiquidity} onChange={e => setMinLiquidity(Number(e.target.value))} />
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-6">
+          <h2 className="font-semibold">Tokens para checar (exceções aparecem sempre):</h2>
+          <div className="mt-3 space-y-2">
+            {tokensToCheck.map((t, i) => (
+              <div key={i} className="flex gap-2">
+                <input className="flex-1 border rounded p-2" value={t} onChange={e => updateTokenAt(i, e.target.value)} placeholder="Endereço do token (ERC20)" />
+                <button className="px-3 py-2 bg-red-500 text-white rounded" onClick={() => removeTokenAt(i)}>Remover</button>
+              </div>
+            ))}
+            <div className="flex gap-2 mt-2">
+              <button className="px-4 py-2 bg-green-600 text-white rounded" onClick={addTokenInput}>Adicionar token</button>
+              <button className="px-4 py-2 bg-blue-600 text-white rounded" onClick={scanTokens} disabled={loading}>{loading ? 'Verificando...' : 'Verificar Liquidez'}</button>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-6">
+          <h2 className="font-semibold">Resultados</h2>
+          <div className="mt-3">
+            {results.length === 0 ? (
+              <div className="text-sm text-gray-500">Nenhum token listado ainda. Clique em "Verificar Liquidez".</div>
+            ) : (
+              <div className="space-y-2">
+                {results.map((r) => (
+                  <div key={r.address} className="p-3 border rounded flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold">{r.symbol || r.address}</div>
+                      <div className="text-xs text-gray-600">{r.address}</div>
+                      <div className="text-sm mt-1">Liquidez: <span className="font-medium">${Number(r.liquidityUSD || 0).toFixed(2)}</span></div>
+                      {r.liquidityUSD < minLiquidity && (
+                        <div className="text-xs text-yellow-600 mt-1">Exceção: aparece mesmo com liquidez baixa</div>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <button className="px-3 py-1 bg-indigo-600 text-white rounded">Swap</button>
+                      <button className="px-3 py-1 bg-emerald-600 text-white rounded">Adicionar Liquidez</button>
+                      <button className="px-3 py-1 bg-gray-200 text-gray-700 rounded">Mais</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <footer className="mt-6 text-sm text-gray-500">Protótipo — substitua os endereços dos tokens nas constantes do topo do arquivo. Para listar muitos tokens, use backend/indexador.</footer>
+      </div>
+    </div>
+  );
+}

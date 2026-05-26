@@ -1,0 +1,155 @@
+{
+  "_format": "hh-sol-cache-2",
+  "files": {
+    "/home/jajaprodutor/PROJETOS JAILSON/Projeto_House_of_Crypto_Exchanges/node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol": {
+      "lastModificationDate": 1759073701606,
+      "contentHash": "ad7c2d0af148c8f9f097d65deeb4da6b",
+      "sourceName": "@openzeppelin/contracts/token/ERC20/IERC20.sol",
+      "solcConfig": {
+        "version": "0.8.9",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "IERC20"
+      ]
+    },
+    "/home/jajaprodutor/PROJETOS JAILSON/Projeto_House_of_Crypto_Exchanges/contracts/AMMRouter.sol": {
+      "lastModificationDate": 1759701194882,
+      "contentHash": "43b33f27b22e0e64743121e951eb1914",
+      "sourceName": "contracts/AMMRouter.sol",
+      "solcConfig": {
+        "version": "0.8.9",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.9",
+        "^0.8.9",
+        "^0.8.9",
+        "^0.8.9"
+      ],
+      "artifacts": [
+        "AMMFactory",
+        "AMMPair",
+        "AMMRouter",
+        "IERC20"
+      ]
+    },
+    "/home/jajaprodutor/PROJETOS JAILSON/Projeto_House_of_Crypto_Exchanges/contracts/AMMFactory.sol": {
+      "lastModificationDate": 1759705437776,
+      "contentHash": "0f240c84e1966a815731925a42a76876",
+      "sourceName": "contracts/AMMFactory.sol",
+      "solcConfig": {
+        "version": "0.8.9",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.9",
+        "^0.8.9"
+      ],
+      "artifacts": [
+        "AMMFactory",
+        "IERC20"
+      ]
+    },
+    "/home/jajaprodutor/PROJETOS JAILSON/Projeto_House_of_Crypto_Exchanges/contracts/AMMPair.sol": {
+      "lastModificationDate": 1759705437777,
+      "contentHash": "06dfb3d1b3d14fd44c15113276b871f6",
+      "sourceName": "contracts/AMMPair.sol",
+      "solcConfig": {
+        "version": "0.8.9",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.9",
+        "^0.8.9"
+      ],
+      "artifacts": [
+        "AMMPair",
+        "IERC20"
+      ]
+    }
+  }
+}
