@@ -1,11 +1,14 @@
 body {
   margin: 0;
   padding: 0;
+.page-iniciante {
   background-image: url("/images/bg-exchange.png");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   background-attachment: fixed;
+  min-height: 100vh;
+}
 .swap-box {
   background: rgba(0,0,0,0.75);
   padding: 20px;

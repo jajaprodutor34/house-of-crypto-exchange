@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import "./index.css";
-
+import SwapBox from "./components/SwapBox";
 import AMMFactoryABI from "./abi/AMMFactory.json";
 import AMMPairABI from "./abi/AMMPair.json";
 import AMMRouterABI from "./abi/AMMRouter.json";
@@ -532,60 +532,15 @@ export default function App() {
             </button>
           </div>
 
-          {/* ÁREA NOVA DE SWAP */}
-          <div className="swap-box">
-            <h2>🔄 Instant Swap</h2>
-
-            <input
-              type="text"
-              placeholder="Token From"
-              value={swapFrom}
-              onChange={(e) =>
-                setSwapFrom(e.target.value)
-              }
-            />
-
-            <input
-              type="text"
-              placeholder="Token To"
-              value={swapTo}
-              onChange={(e) =>
-                setSwapTo(e.target.value)
-              }
-            />
-
-            <input
-              type="number"
-              placeholder="Amount"
-              value={swapAmount}
-              onChange={(e) =>
-                setSwapAmount(e.target.value)
-              }
-            />
-
-            <button
-              onClick={() => {
-                if (!account)
-                  return alert(
-                    "Connect wallet first."
-                  );
-
-                if (
-                  !swapAmount ||
-                  Number(swapAmount) <= 0
-                )
-                  return alert(
-                    "Invalid amount."
-                  );
-
-                alert(
-                  `Swap simulated:\n${swapAmount} ${swapFrom} → ${swapTo}`
-                );
-              }}
-            >
-              🔥 Swap Tokens
-            </button>
-          </div>
+          <SwapBox
+  account={account}
+  swapFrom={swapFrom}
+  setSwapFrom={setSwapFrom}
+  swapTo={swapTo}
+  setSwapTo={setSwapTo}
+  swapAmount={swapAmount}
+  setSwapAmount={setSwapAmount}
+/>
 
           <button
             className="connect-wallet"
@@ -618,7 +573,7 @@ export default function App() {
               : "🌙 Dark Mode"}
           </button>
 
-          <h2>Trading Dashboard</h2>
+          
 
           <iframe
             src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview&symbol=BINANCE:BTCUSDT&interval=60&theme=dark"
@@ -693,7 +648,7 @@ export default function App() {
       </button>
     </div>
   ))}
-</div>
+</div><h2>Trading Dashboard</h2>
 
           <div className="actions">
             <button
